@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artana Orçamentos</title>
+    <!-- Importando bibliotecas para geração de PDF e Tabelas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body style="margin: 0; padding: 2rem; font-family: sans-serif; background-color: #f4f6f9; color: #333;">
+
+    <header style="text-align: center; margin-bottom: 2rem;">
+        <h1>Artana Orçamentos</h1>
+    </header>
+
+    <main style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        
+        <div style="margin-bottom: 1rem;">
+            <label>Nome do Cliente (Opcional)</label>
+            <input type="text" id="nomeCliente" placeholder="Ex: João da Silva" oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Tipo de Produto</label>
+            <select id="produto" onchange="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem;">
+                <option value="deck">Deck (m²)</option>
+                <option value="rodape7">Rodapé 7cm (Metro Linear)</option>
+                <option value="rodape10">Rodapé 10cm (Metro Linear)</option>
+                <option value="ripado_linear">Ripado (Metro Linear)</option>
+                <option value="ripado_m2">Ripado (m²)</option>
+                <option value="ripado_ext_linear">Ripado Externo (Metro Linear)</option>
+                <option value="ripado_ext_m2">Ripado Externo (m²)</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Quantidade</label>
+            <input type="number" id="medida" step="0.01" required oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Observações (Opcional)</label>
+            <textarea id="observacoes" placeholder="Ex: Entrega para o próximo mês, cor amadeirada..." oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; resize: vertical; height: 80px; box-sizing: border-box;"></textarea>
+        </div>
+        
+        <button type="button" onclick="aplicarDesconto()" style="width: 100%; padding: 0.8rem; background-color: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 1rem;">Aplicar 10% de Desconto</button>
+        
+        <div id="resultado" style="margin-top: 2rem; display: none;"></div>
+    </main>
+
+    <script>
+        let valorTotalFinal = 0;
+        let dadosOrcamentoAtual = [];
+        let tituloProdutoAtual = "";
+        let descontoAplicado = false;
+
+        function formatarMoeda(valor) {
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function calcular() {
+            let tipo = document.getElementById('produto').value;
+            let qtdStr = document.getElementById('medida').value;
+            let divRes = document.getElementById('resultado');
+
+            if (!qtdStr || qtdStr.trim() === "") {
+                divRes.style.display = 'none';
+                valorTotalFinal = 0;
+                return;
+            }
+
+            let qtd = parseFloat(qtdStr);
+            if (isNaN(qtd) || qtd <= 0) {
+                divRes.style.display = 'none';
+                valorTotalFinal = 0;
+                return;
+            }
+
+            divRes.style.display = 'block';
+            dadosOrcamentoAtual = [];
+            descontoAplicado = false; // Reseta o desconto ao alterar medidas/produtos
+
+            if (tipo === 'deck') {
+                tituloProdutoAtual = "Deck";
+                let qtdDeck = Math.ceil(qtd * 2.70);
+                let valDeck = qtdDeck * 150;
+                let qtdBar = (qtd * 1.20);
+                let valBar = qtdBar * 60;
+                let qtdPres = (qtd * 2.50);
+                let valPres = qtdPres * 2;
+                let qtdPara = (qtd * 22);
+                let valPara = qtdPara * 2;
+                valorTotalFinal = valDeck + valBar + valPres + valPara;
+
+                dadosOrcamentoAtual.push(
+                    ["Deck", `${qtdDeck} pçs`, formatarMoeda(valDeck)],
+                    ["Barrotes", `${qtdBar.toFixed(2)} pçs`, formatarMoeda(valBar)],
+                    ["Presilhas", `${qtdPres.toFixed(2)} pçs`, formatarMoeda(valPres)],
+                    ["Parafusos", `${qtdPara.toFixed(2)} pçs`, formatarMoeda(valPara)]
+                );
+            } 
+            else if (tipo === 'ripado_linear' || tipo === 'ripado_m2') {
+                let divisor = (tipo === 'ripado_linear') ? 0.16 : 0.46;
+                let pecas = Math.ceil(qtd / divisor);
+                valorTotalFinal = pecas * 50;
+                tituloProdutoAtual = `Ripado (${tipo === 'ripado_linear' ? 'Linear' : 'm²'})`;
+
+                dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorTotalFinal)]);
+            }
+            else if (tipo === 'ripado_ext_linear' || tipo === 'ripado_ext_m2') {
+                let divisor = (tipo === 'ripado_ext_linear') ? 0.20 : 0.58;
+                let pecas = Math.ceil(qtd / divisor);
+                valorTotalFinal = pecas * 150;
+                tituloProdutoAtual = `Ripado Externo (${tipo === 'ripado_ext_linear' ? 'Linear' : 'm²'})`;
+
+                dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorTotalFinal)]);
+            }
+            else {
+                let precoUnit = (tipo === 'rodape7') ? 25 : 37;
+                let qtdPecas = Math.ceil(qtd / 2.40);
+                valorTotalFinal = qtdPecas * precoUnit;
+                tituloProdutoAtual = `Rodapé ${tipo === 'rodape7' ? '7cm' : '10cm'}`;
+
+                dadosOrcamentoAtual.push([tituloProdutoAtual, `${qtdPecas} peças`, formatarMoeda(valorTotalFinal)]);
+            }
+
+            renderizarTabelaNaTela();
+        }
+
+        function renderizarTabelaNaTela() {
+            let divRes = document.getElementById('resultado');
+            let nomeCliente = document.getElementById('nomeCliente').value.trim();
+            let observacoes = document.getElementById('observacoes').value.trim();
+            
+            let htmlTable = `
+                <div style="background: #e2e8f0; padding: 1rem; border-radius: 4px;">
+                    <h3 style="margin-top: 0; color: #1e3a8a; margin-bottom: 0.5rem;">Orçamento: ${tituloProdutoAtual}</h3>
+            `;
+
+            if (nomeCliente) {
+                htmlTable += `<p style="margin: 0.2rem 0; font-size: 0.95rem;"><strong>Cliente:</strong> ${nomeCliente}</p>`;
+            }
+
+            htmlTable += `
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; margin-top: 0.8rem; margin-bottom: 1rem;">
+                        <thead>
+                            <tr style="background: #2563eb; color: white; text-align: left;">
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Item / Produto</th>
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Quantidade</th>
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            dadosOrcamentoAtual.forEach(row => {
+                htmlTable += `
+                    <tr>
+                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[0]}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[1]}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[2]}</td>
+                    </tr>
+                `;
+            });
+
+            htmlTable += `
+                        </tbody>
+                    </table>
+            `;
+
+            if (observacoes) {
+                htmlTable += `<p style="margin: 0.5rem 0; font-size: 0.9rem; background: #fff; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;"><strong>Obs:</strong> ${observacoes}</p>`;
+            }
+
+            htmlTable += `
+                    <div style="text-align: right; font-size: 1.1rem; margin: 1rem 0;">
+                        <strong>TOTAL${descontoAplicado ? ' (com 10% desc.)' : ''}: ${formatarMoeda(valorTotalFinal)}</strong>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="button" onclick="gerarPDF()" style="flex: 1; padding: 0.7rem; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">Baixar PDF</button>
+                        <button type="button" onclick="copiarParaWhatsApp()" style="flex: 1; padding: 0.7rem; background-color: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer;">Copiar p/ WhatsApp</button>
+                    </div>
+                </div>
+            `;
+
+            divRes.innerHTML = htmlTable;
+        }
+
+        function aplicarDesconto() {
+            if (valorTotalFinal > 0 && !descontoAplicado) {
+                valorTotalFinal = valorTotalFinal * 0.90;
+                descontoAplicado = true;
+                dadosOrcamentoAtual.push(["Desconto Aplicado (10%)", "-", formatarMoeda(valorTotalFinal)]);
+                renderizarTabelaNaTela();
+            } else if (descontoAplicado) {
+                alert("O desconto de 10% já foi aplicado!");
+            } else {
+                alert("Preencha a quantidade primeiro!");
+            }
+        }
+
+        function copiarParaWhatsApp() {
+            let nomeCliente = document.getElementById('nomeCliente').value.trim();
+            let observacoes = document.getElementById('observacoes').value.trim();
+            
+            let texto = `*Orçamento Artana Multistore*\n_Departamento de Vendas_\n`;
+            if (nomeCliente) texto += `Cliente: ${nomeCliente}\n`;
+            texto += `\n*Produto:* ${tituloProdutoAtual}\n`;
+            
+            dadosOrcamentoAtual.forEach(row => {
+                texto += `- ${row[0]}: ${row[1]} (${row[2]})\n`;
+            });
+
+            if (observacoes) texto += `\nObs: ${observacoes}\n`;
+            texto += `\n*TOTAL:* *${formatarMoeda(valorTotalFinal)}*`;
+
+            navigator.clipboard.writeText(texto).then(() => {
+                alert("Orçamento copiado para a área de transferência! Cole direto no chat do WhatsApp.");
+            });
+        }
+
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let nomeCliente = document.getElementById('nomeCliente').value.trim();
+            let observacoes = document.getElementById('observacoes').value.trim();
+
+            doc.setFontSize(16);
+            doc.setTextColor(37, 99, 235);
+            doc.text("Orçamento Artana Multistore", 14, 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Departamento de Vendas", 14, 26);
+            doc.text("Data: " + new Date().toLocaleDateString('pt-BR'), 14, 32);
+
+            let posY = 38;
+            if (nomeCliente) {
+                doc.setFontSize(11);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Cliente: ${nomeCliente}`, 14, posY);
+                posY += 6;
+            }
+
+            doc.autoTable({
+                startY: posY,
+                head: [['Item / Produto', 'Quantidade', 'Valor']],
+                body: dadosOrcamentoAtual,
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235] },
+            });
+
+            let finalY = doc.lastAutoTable.finalY + 10;
+
+            if (observacoes) {
+                doc.setFontSize(10);
+                doc.setTextColor(80, 80, 80);
+                doc.text(`Observações: ${observacoes}`, 14, finalY, { maxWidth: 180 });
+                finalY += 12;
+            }
+
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Valor Total Final: ${formatarMoeda(valorTotalFinal)}`, 14, finalY);
+
+            doc.save("orcamento-artana.pdf");
+        }
+    </script>
+</body>
+</html>
