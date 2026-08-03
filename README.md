@@ -1,26 +1,23 @@
-# Artana Orçamentos 📊
+# 🛒 Artana Orçamentos - Gerador de Orçamentos Rápidos
 
-Sistema web leve, rápido e responsivo desenvolvido para o **Departamento de Vendas da Artana Multistore**, focado no cálculo automatizado de materiais (Deck, Rodapés, Ripados e Ripados Externos), geração de orçamentos detalhados em tabela, cópia rápida para o WhatsApp e exportação oficial em PDF.
+Um sistema web leve e responsivo desenvolvido para a equipe de vendas da **Artana Multistore**. O aplicativo permite a criação rápida de orçamentos, cálculo automático de materiais (como Decks, Ripados e Rodapés), adição de itens extras e exportação direta para PDF e WhatsApp.
 
-## 🚀 Funcionalidades
+## ✨ Funcionalidades
 
-- **Cálculo Automático Instantâneo:** Atualiza os itens, quantidades e valores monetários em tempo real conforme você digita as medidas ou altera os produtos.
-- **Campos Opcionais:** Inclusão automática do **Nome do Cliente** e de **Observações** personalizadas no orçamento.
-- **Desconto Integrado:** Aplicação rápida de 10% de desconto sobre o valor final.
-- **Formatação Monetária Brasileira:** Exibição limpa de valores no padrão oficial (`R$ 1.234,56`).
-- **Exportação em PDF:** Gera um documento formatado profissionalmente com cabeçalho da empresa, tabela de itens e valores finais através das bibliotecas *jsPDF* e *AutoTable*.
-- **Atalho para WhatsApp:** Copia o orçamento completo formatado diretamente para a área de transferência com um clique.
+- **Cálculo em Tempo Real:** Digite a medida e veja o orçamento sendo montado instantaneamente.
+- **Múltiplos Produtos:** Fórmulas integradas para Decks (calculando barrotes, presilhas, etc.), Ripados e Rodapés.
+- **Painel de Itens Adicionais:** Adicione produtos extras como Brises, Colas, Selantes ou até mesmo **Itens Personalizados (Manuais)**.
+- **Sistema de Descontos Flexível:** Aplique desconto fixo de 10% ou insira descontos manuais em Porcentagem (%) ou Dinheiro (R$).
+- **Exportação Profissional:**
+  - **PDF:** Gera um documento em PDF pronto para o cliente, com o logotipo da empresa (mantendo a proporção correta).
+  - **WhatsApp:** Copia o orçamento formatado (com negritos e quebras de linha) direto para a área de transferência.
+- **Prevenção de Perda (Auto-save):** O sistema salva os dados automaticamente no `localStorage`. Se a página for fechada acidentalmente, o orçamento não é perdido.
+- **Notificações Modernas (Toasts):** Alertas visuais elegantes e não intrusivos no topo da tela.
 
-## 🛠️ Tecnologias Utilizadas
+## 🚀 Como Usar (Instalação)
 
-- **HTML5** e **CSS3** (Design limpo, responsivo e baseado em Flexbox).
-- **JavaScript (Vanilla)** para a lógica de cálculo e manipulação dinâmica do DOM.
-- **jsPDF** & **jsPDF-AutoTable** (CDN) para a geração dos relatórios em PDF.
+O projeto é **100% Client-Side** (roda direto no navegador), não necessitando de servidor, banco de dados ou backend.
 
-## 📦 Como Usar
-
-1. Acesse o arquivo `index.html` em qualquer navegador web moderno.
-2. *(Opcional)* Preencha o **Nome do Cliente** e as **Observações**.
-3. Selecione o **Tipo de Produto** desejado no menu suspenso.
-4. Digite a **Quantidade** (m² ou Metro Linear). O cálculo será exibido instantaneamente na tabela abaixo.
-5. Utilize os botões para **Aplicar Desconto**, **Copiar para o WhatsApp** ou **Baixar o PDF** do orçamento.
+1. Faça o clone do repositório:
+   ```bash
+   git clone [https://github.com/SEU_USUARIO/artana-orcamentos.git](https://github.com/SEU_USUARIO/artana-orcamentos.git)
