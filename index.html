@@ -7,14 +7,45 @@
     <!-- Importando bibliotecas para geração de PDF e Tabelas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* Estilo para a Notificação Toast */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #16a34a;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px 20px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            top: 20px;
+            transform: translateX(-50%);
+            font-family: sans-serif;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s, top 0.3s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            top: 30px;
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 2rem; font-family: sans-serif; background-color: #f4f6f9; color: #333;">
+<body style="margin: 0; padding: 2rem; font-family: sans-serif; background-color: #f4f6f9; color: #333;" onload="iniciarSistema()">
 
-    <header style="text-align: center; margin-bottom: 2rem;">
+    <!-- Div da Notificação -->
+    <div id="toast">Ação realizada com sucesso!</div>
+
+    <header style="text-align: center; margin-bottom: 2rem; position: relative;">
         <h1>Artana Orçamentos</h1>
+        <button type="button" onclick="limparRascunho()" style="position: absolute; right: 0; top: 0; background: transparent; border: 1px solid #cbd5e1; padding: 0.5rem; border-radius: 4px; cursor: pointer; color: #64748b; font-size: 0.8rem;">🔄 Limpar Tudo</button>
     </header>
 
-    <main style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <main style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative;">
         
         <div style="margin-bottom: 1rem;">
             <label>Nome do Cliente (Opcional)</label>
@@ -24,6 +55,7 @@
         <div style="margin-bottom: 1rem;">
             <label>Tipo de Produto</label>
             <select id="produto" onchange="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem;">
+                <option value="">Selecione um produto principal (Opcional)</option>
                 <option value="deck">Deck (m²)</option>
                 <option value="rodape7">Rodapé 7cm (Metro Linear)</option>
                 <option value="rodape10">Rodapé 10cm (Metro Linear)</option>
@@ -36,7 +68,7 @@
 
         <div style="margin-bottom: 1rem;">
             <label>Quantidade</label>
-            <input type="number" id="medida" step="0.01" required oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; box-sizing: border-box;">
+            <input type="number" id="medida" step="0.01" oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; box-sizing: border-box;">
         </div>
 
         <div style="margin-bottom: 1rem;">
@@ -44,90 +76,375 @@
             <textarea id="observacoes" placeholder="Ex: Entrega para o próximo mês, cor amadeirada..." oninput="calcular()" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem; resize: vertical; height: 80px; box-sizing: border-box;"></textarea>
         </div>
         
-        <button type="button" onclick="aplicarDesconto()" style="width: 100%; padding: 0.8rem; background-color: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 1rem;">Aplicar 10% de Desconto</button>
-        
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">
+
+        <!-- PAINEL DE ITENS ADICIONAIS -->
+        <button type="button" onclick="togglePainelAdicionais()" style="width: 100%; padding: 0.8rem; background-color: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 1rem; font-weight: bold; text-align: left;">
+            + Adicionar Itens Adicionais (Colas, Brises, etc)
+        </button>
+
+        <div id="painelAdicionais" style="display: none; background: #f8fafc; padding: 1rem; border-radius: 4px; border: 1px solid #cbd5e1; margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Produto Adicional</label>
+            <select id="produtoExtra" onchange="verificarProdutoPersonalizado()" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; box-sizing: border-box;">
+                <option value="brise_8x4">Brise Externo 8x4x290 (R$ 78,00)</option>
+                <option value="brise_5x5">Brise Externo 5x5x290 (R$ 76,00)</option>
+                <option value="cola_pu">Cola PU 40 Universal (R$ 14,00)</option>
+                <option value="prego_liquido">Prego Líquido Extra Forte (R$ 12,00)</option>
+                <option value="selante">Selante Acrílico (R$ 10,00)</option>
+                <option value="presilhas_int">Presilhas Internas (R$ 1,00)</option>
+                <option value="cantoneira_ext">Cantoneira Externa (R$ 85,00)</option>
+                <option value="cantoneira_int">Cantoneira Interna (R$ 35,00)</option>
+                <option value="outro" style="font-weight: bold;">Outro (Digitar Manualmente)...</option>
+            </select>
+            
+            <div id="painelProdutoPersonalizado" style="display: none; gap: 0.5rem; margin-bottom: 1rem;">
+                <input type="text" id="nomePersonalizado" placeholder="Nome do Item" style="flex: 2; padding: 0.5rem; box-sizing: border-box; width: 100%;">
+                <input type="number" id="precoPersonalizado" step="0.01" placeholder="Preço Unit. (R$)" style="flex: 1; padding: 0.5rem; box-sizing: border-box; width: 100%; margin-top: 0.5rem;">
+            </div>
+
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Quantidade</label>
+            <input type="number" id="qtdExtra" step="1" placeholder="Ex: 5" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; box-sizing: border-box;">
+            
+            <button type="button" onclick="adicionarExtraAoOrcamento()" style="width: 100%; padding: 0.8rem; background-color: #475569; color: white; border: none; border-radius: 4px; cursor: pointer;">Inserir na Tabela</button>
+        </div>
+
+        <!-- PAINEL DE DESCONTOS -->
+        <div style="background: #f1f5f9; padding: 1rem; border-radius: 4px; border: 1px dashed #cbd5e1; margin-bottom: 1rem;">
+            <h4 style="margin-top: 0; margin-bottom: 0.8rem; color: #334155; font-size: 0.95rem;">Opções de Desconto</h4>
+            
+            <button type="button" onclick="aplicarDescontoRapido()" style="width: 100%; padding: 0.8rem; background-color: #059669; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 1rem;">Aplicar 10% de Desconto Fixo</button>
+            
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span style="font-size: 0.9rem; color: #64748b; white-space: nowrap;">Ou manual:</span>
+                <input type="number" id="valorDescontoManual" step="0.01" placeholder="Valor" style="width: 100%; padding: 0.5rem; box-sizing: border-box;">
+                <select id="tipoDescontoManual" style="padding: 0.5rem; box-sizing: border-box;">
+                    <option value="porcentagem">%</option>
+                    <option value="dinheiro">R$</option>
+                </select>
+                <button type="button" onclick="aplicarDescontoManual()" style="padding: 0.6rem 1rem; background-color: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">Aplicar</button>
+            </div>
+        </div>
+
         <div id="resultado" style="margin-top: 2rem; display: none;"></div>
     </main>
 
     <script>
+        // Variáveis Globais
         let valorTotalFinal = 0;
+        let valorTotalBruto = 0; // Soma antes do desconto
         let dadosOrcamentoAtual = [];
         let tituloProdutoAtual = "";
-        let descontoAplicado = false;
+        let descontoDados = { ativo: false, tipo: '', valorCalculado: 0, rotulo: '' };
+        let itensAdicionais = [];
+        
+        let logoBase64 = null;
+        let logoOriginalWidth = 0;
+        let logoOriginalHeight = 0;
 
+        const catalogoExtra = {
+            'brise_8x4': { nome: 'Brise Externo 8x4x290', preco: 78.00 },
+            'brise_5x5': { nome: 'Brise Externo 5x5x290', preco: 76.00 },
+            'cola_pu': { nome: 'Cola PU 40 Universal', preco: 14.00 },
+            'prego_liquido': { nome: 'Prego Líquido Extra Forte', preco: 12.00 },
+            'selante': { nome: 'Selante Acrílico', preco: 10.00 },
+            'presilhas_int': { nome: 'Presilhas Internas', preco: 1.00 },
+            'cantoneira_ext': { nome: 'Cantoneira Externa', preco: 85.00 },
+            'cantoneira_int': { nome: 'Cantoneira Interna', preco: 35.00 }
+        };
+
+        // --- SISTEMA DE INICIALIZAÇÃO ---
+        function iniciarSistema() {
+            carregarLogo();
+            carregarRascunho();
+        }
+
+        // --- SISTEMA DE TOAST (Notificações) ---
+        function mostrarToast(mensagem, cor = '#16a34a') {
+            const toast = document.getElementById("toast");
+            toast.innerText = mensagem;
+            toast.style.backgroundColor = cor;
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // --- CARREGAR LOGO DA ARTANA PARA O PDF (SEM DISTORÇÃO) ---
+        function carregarLogo() {
+            let img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = function() {
+                logoOriginalWidth = img.width;
+                logoOriginalHeight = img.height;
+                
+                let canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                let ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                logoBase64 = canvas.toDataURL('image/png');
+            };
+            // URL da imagem fornecida
+            img.src = "https://images.tcdn.com.br/files/1522971/themes/5/img/settings/logoartanaaa.png?76b3f3558111acfef7f5e3a88327ab35";
+        }
+
+        // --- SISTEMA DE RASCUNHO (LOCALSTORAGE) ---
+        function salvarRascunho() {
+            const rascunho = {
+                nomeCliente: document.getElementById('nomeCliente').value,
+                produto: document.getElementById('produto').value,
+                medida: document.getElementById('medida').value,
+                observacoes: document.getElementById('observacoes').value,
+                itensAdicionais: itensAdicionais,
+                descontoDados: descontoDados
+            };
+            localStorage.setItem('artanaRascunho', JSON.stringify(rascunho));
+        }
+
+        function carregarRascunho() {
+            const rascunhoSalvo = localStorage.getItem('artanaRascunho');
+            if (rascunhoSalvo) {
+                const rascunho = JSON.parse(rascunhoSalvo);
+                document.getElementById('nomeCliente').value = rascunho.nomeCliente || '';
+                document.getElementById('produto').value = rascunho.produto || '';
+                document.getElementById('medida').value = rascunho.medida || '';
+                document.getElementById('observacoes').value = rascunho.observacoes || '';
+                itensAdicionais = rascunho.itensAdicionais || [];
+                descontoDados = rascunho.descontoDados || { ativo: false, tipo: '', valorCalculado: 0, rotulo: '' };
+                
+                calcular(false); // Renderiza sem salvar de novo imediatamente
+            }
+        }
+
+        function limparRascunho() {
+            localStorage.removeItem('artanaRascunho');
+            document.getElementById('nomeCliente').value = '';
+            document.getElementById('produto').value = '';
+            document.getElementById('medida').value = '';
+            document.getElementById('observacoes').value = '';
+            document.getElementById('produtoExtra').value = 'brise_8x4';
+            verificarProdutoPersonalizado();
+            document.getElementById('qtdExtra').value = '';
+            
+            itensAdicionais = [];
+            descontoDados = { ativo: false, tipo: '', valorCalculado: 0, rotulo: '' };
+            calcular();
+            mostrarToast("Rascunho limpo com sucesso!", "#475569");
+        }
+
+        // --- FORMATAÇÃO DE MOEDA ---
         function formatarMoeda(valor) {
             return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
-        function calcular() {
+        // --- ITENS ADICIONAIS & PERSONALIZADOS ---
+        function togglePainelAdicionais() {
+            let painel = document.getElementById('painelAdicionais');
+            painel.style.display = (painel.style.display === 'none' || painel.style.display === '') ? 'block' : 'none';
+        }
+
+        function verificarProdutoPersonalizado() {
+            let select = document.getElementById('produtoExtra').value;
+            let painelPers = document.getElementById('painelProdutoPersonalizado');
+            if (select === 'outro') {
+                painelPers.style.display = 'flex';
+            } else {
+                painelPers.style.display = 'none';
+            }
+        }
+
+        function adicionarExtraAoOrcamento() {
+            let tipo = document.getElementById('produtoExtra').value;
+            let qtdStr = document.getElementById('qtdExtra').value;
+            let qtd = parseInt(qtdStr);
+
+            if (isNaN(qtd) || qtd <= 0) {
+                mostrarToast("Preencha a quantidade corretamente!", "#dc2626");
+                return;
+            }
+
+            let nomeFinal = "";
+            let precoFinal = 0;
+
+            if (tipo === 'outro') {
+                let nomeManual = document.getElementById('nomePersonalizado').value.trim();
+                let precoManualStr = document.getElementById('precoPersonalizado').value;
+                let precoManual = parseFloat(precoManualStr);
+
+                if (!nomeManual || isNaN(precoManual) || precoManual < 0) {
+                    mostrarToast("Preencha o nome e o valor do item personalizado!", "#dc2626");
+                    return;
+                }
+                nomeFinal = nomeManual;
+                precoFinal = precoManual;
+                
+                // Limpa os campos após add
+                document.getElementById('nomePersonalizado').value = '';
+                document.getElementById('precoPersonalizado').value = '';
+            } else {
+                let prod = catalogoExtra[tipo];
+                nomeFinal = prod.nome;
+                precoFinal = prod.preco;
+            }
+
+            itensAdicionais.push({
+                nome: nomeFinal,
+                qtd: qtd,
+                total: precoFinal * qtd
+            });
+
+            document.getElementById('qtdExtra').value = '';
+            mostrarToast("Item adicionado com sucesso!");
+            calcular();
+        }
+
+        function removerExtra(index) {
+            itensAdicionais.splice(index, 1);
+            calcular();
+        }
+
+        function limparExtras() {
+            itensAdicionais = [];
+            calcular();
+        }
+
+        // --- DESCONTOS ---
+        function aplicarDescontoRapido() {
+            if (valorTotalBruto <= 0) {
+                mostrarToast("Adicione algum item antes de dar desconto!", "#dc2626");
+                return;
+            }
+            descontoDados = { ativo: true, tipo: 'porcentagem', rotulo: '10% (Fixo)', valorCalculado: valorTotalBruto * 0.10 };
+            calcular();
+            mostrarToast("Desconto de 10% aplicado!");
+        }
+
+        function aplicarDescontoManual() {
+            let valorInputStr = document.getElementById('valorDescontoManual').value;
+            let tipoDesc = document.getElementById('tipoDescontoManual').value;
+            let valor = parseFloat(valorInputStr);
+
+            if (valorTotalBruto <= 0) {
+                mostrarToast("Adicione algum item antes de dar desconto!", "#dc2626");
+                return;
+            }
+            if (isNaN(valor) || valor <= 0) {
+                mostrarToast("Digite um valor de desconto válido!", "#dc2626");
+                return;
+            }
+
+            let valorCalc = 0;
+            let rotuloFinal = "";
+
+            if (tipoDesc === 'porcentagem') {
+                if (valor >= 100) { mostrarToast("Desconto não pode ser 100% ou maior!", "#dc2626"); return; }
+                valorCalc = valorTotalBruto * (valor / 100);
+                rotuloFinal = `${valor}%`;
+            } else {
+                if (valor >= valorTotalBruto) { mostrarToast("Desconto maior que o total!", "#dc2626"); return; }
+                valorCalc = valor;
+                rotuloFinal = formatarMoeda(valor);
+            }
+
+            descontoDados = { ativo: true, tipo: tipoDesc, rotulo: rotuloFinal, valorCalculado: valorCalc };
+            document.getElementById('valorDescontoManual').value = '';
+            calcular();
+            mostrarToast("Desconto manual aplicado!");
+        }
+
+        function removerDesconto() {
+            descontoDados = { ativo: false, tipo: '', valorCalculado: 0, rotulo: '' };
+            calcular();
+        }
+
+        // --- CÁLCULO PRINCIPAL ---
+        function calcular(salvarEstado = true) {
             let tipo = document.getElementById('produto').value;
             let qtdStr = document.getElementById('medida').value;
             let divRes = document.getElementById('resultado');
 
-            if (!qtdStr || qtdStr.trim() === "") {
-                divRes.style.display = 'none';
-                valorTotalFinal = 0;
-                return;
-            }
-
             let qtd = parseFloat(qtdStr);
-            if (isNaN(qtd) || qtd <= 0) {
+            let temProdutoPrincipal = tipo !== "" && !isNaN(qtd) && qtd > 0;
+
+            if (!temProdutoPrincipal && itensAdicionais.length === 0) {
                 divRes.style.display = 'none';
+                valorTotalBruto = 0;
                 valorTotalFinal = 0;
+                if(salvarEstado) salvarRascunho();
                 return;
             }
 
             divRes.style.display = 'block';
             dadosOrcamentoAtual = [];
-            descontoAplicado = false; // Reseta o desconto ao alterar medidas/produtos
+            valorTotalBruto = 0;
+            let valorPrincipal = 0;
 
-            if (tipo === 'deck') {
-                tituloProdutoAtual = "Deck";
-                let qtdDeck = Math.ceil(qtd * 2.70);
-                let valDeck = qtdDeck * 150;
-                let qtdBar = (qtd * 1.20);
-                let valBar = qtdBar * 60;
-                let qtdPres = (qtd * 2.50);
-                let valPres = qtdPres * 2;
-                let qtdPara = (qtd * 22);
-                let valPara = qtdPara * 2;
-                valorTotalFinal = valDeck + valBar + valPres + valPara;
+            if (temProdutoPrincipal) {
+                if (tipo === 'deck') {
+                    tituloProdutoAtual = "Deck";
+                    let qtdDeck = Math.ceil(qtd * 2.70);
+                    let valDeck = qtdDeck * 150;
+                    let qtdBar = (qtd * 1.20);
+                    let valBar = qtdBar * 60;
+                    let qtdPres = (qtd * 2.50);
+                    let valPres = qtdPres * 2;
+                    let qtdPara = (qtd * 22);
+                    let valPara = qtdPara * 2;
+                    valorPrincipal = valDeck + valBar + valPres + valPara;
 
-                dadosOrcamentoAtual.push(
-                    ["Deck", `${qtdDeck} pçs`, formatarMoeda(valDeck)],
-                    ["Barrotes", `${qtdBar.toFixed(2)} pçs`, formatarMoeda(valBar)],
-                    ["Presilhas", `${qtdPres.toFixed(2)} pçs`, formatarMoeda(valPres)],
-                    ["Presilhas de conexão", `${qtdPara.toFixed(2)} pçs`, formatarMoeda(valPara)]
-                );
-            } 
-            else if (tipo === 'ripado_linear' || tipo === 'ripado_m2') {
-                let divisor = (tipo === 'ripado_linear') ? 0.16 : 0.46;
-                let pecas = Math.ceil(qtd / divisor);
-                valorTotalFinal = pecas * 50;
-                tituloProdutoAtual = `Ripado (${tipo === 'ripado_linear' ? 'Linear' : 'm²'})`;
-
-                dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorTotalFinal)]);
+                    dadosOrcamentoAtual.push(
+                        ["Deck", `${qtdDeck} pçs`, formatarMoeda(valDeck)],
+                        ["Barrotes", `${qtdBar.toFixed(2)} pçs`, formatarMoeda(valBar)],
+                        ["Presilhas", `${qtdPres.toFixed(2)} pçs`, formatarMoeda(valPres)],
+                        ["Presilhas de conexão", `${qtdPara.toFixed(2)} pçs`, formatarMoeda(valPara)]
+                    );
+                } 
+                else if (tipo === 'ripado_linear' || tipo === 'ripado_m2') {
+                    let divisor = (tipo === 'ripado_linear') ? 0.16 : 0.46;
+                    let pecas = Math.ceil(qtd / divisor);
+                    valorPrincipal = pecas * 50;
+                    tituloProdutoAtual = `Ripado (${tipo === 'ripado_linear' ? 'Linear' : 'm²'})`;
+                    dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorPrincipal)]);
+                }
+                else if (tipo === 'ripado_ext_linear' || tipo === 'ripado_ext_m2') {
+                    let divisor = (tipo === 'ripado_ext_linear') ? 0.20 : 0.58;
+                    let pecas = Math.ceil(qtd / divisor);
+                    valorPrincipal = pecas * 150;
+                    tituloProdutoAtual = `Ripado Externo (${tipo === 'ripado_ext_linear' ? 'Linear' : 'm²'})`;
+                    dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorPrincipal)]);
+                }
+                else if (tipo === 'rodape7' || tipo === 'rodape10') {
+                    let precoUnit = (tipo === 'rodape7') ? 25 : 37;
+                    let qtdPecas = Math.ceil(qtd / 2.40);
+                    valorPrincipal = qtdPecas * precoUnit;
+                    tituloProdutoAtual = `Rodapé ${tipo === 'rodape7' ? '7cm' : '10cm'}`;
+                    dadosOrcamentoAtual.push([tituloProdutoAtual, `${qtdPecas} peças`, formatarMoeda(valorPrincipal)]);
+                }
+                valorTotalBruto += valorPrincipal;
             }
-            else if (tipo === 'ripado_ext_linear' || tipo === 'ripado_ext_m2') {
-                let divisor = (tipo === 'ripado_ext_linear') ? 0.20 : 0.58;
-                let pecas = Math.ceil(qtd / divisor);
-                valorTotalFinal = pecas * 150;
-                tituloProdutoAtual = `Ripado Externo (${tipo === 'ripado_ext_linear' ? 'Linear' : 'm²'})`;
 
-                dadosOrcamentoAtual.push([tituloProdutoAtual, `${pecas} peças`, formatarMoeda(valorTotalFinal)]);
-            }
-            else {
-                let precoUnit = (tipo === 'rodape7') ? 25 : 37;
-                let qtdPecas = Math.ceil(qtd / 2.40);
-                valorTotalFinal = qtdPecas * precoUnit;
-                tituloProdutoAtual = `Rodapé ${tipo === 'rodape7' ? '7cm' : '10cm'}`;
+            // Adicionais
+            itensAdicionais.forEach(item => {
+                valorTotalBruto += item.total;
+            });
 
-                dadosOrcamentoAtual.push([tituloProdutoAtual, `${qtdPecas} peças`, formatarMoeda(valorTotalFinal)]);
+            // Recalcula o valor monetário do desconto caso o subtotal mude (se for %)
+            if (descontoDados.ativo) {
+                if (descontoDados.tipo === 'porcentagem') {
+                    let perc = parseFloat(descontoDados.rotulo); // Puxa o numero bruto
+                    if(isNaN(perc)) perc = 10; // Fallback pro de 10%
+                    descontoDados.valorCalculado = valorTotalBruto * (perc / 100);
+                }
             }
 
+            valorTotalFinal = valorTotalBruto;
+            if (descontoDados.ativo) {
+                valorTotalFinal -= descontoDados.valorCalculado;
+            }
+
+            if(salvarEstado) salvarRascunho();
             renderizarTabelaNaTela();
         }
 
+        // --- RENDERIZAR TELA ---
         function renderizarTabelaNaTela() {
             let divRes = document.getElementById('resultado');
             let nomeCliente = document.getElementById('nomeCliente').value.trim();
@@ -135,14 +452,16 @@
             
             let htmlTable = `
                 <div style="background: #e2e8f0; padding: 1rem; border-radius: 4px;">
-                    <h3 style="margin-top: 0; color: #1e3a8a; margin-bottom: 0.5rem;">Orçamento: ${tituloProdutoAtual}</h3>
             `;
 
             if (nomeCliente) {
                 htmlTable += `<p style="margin: 0.2rem 0; font-size: 0.95rem;"><strong>Cliente:</strong> ${nomeCliente}</p>`;
             }
 
-            htmlTable += `
+            // Tabela 1: Produto Principal
+            if (dadosOrcamentoAtual.length > 0) {
+                htmlTable += `
+                    <h3 style="margin-top: 0; color: #1e3a8a; margin-bottom: 0.5rem;">Orçamento: ${tituloProdutoAtual}</h3>
                     <table style="width: 100%; border-collapse: collapse; background: #fff; margin-top: 0.8rem; margin-bottom: 1rem;">
                         <thead>
                             <tr style="background: #2563eb; color: white; text-align: left;">
@@ -152,34 +471,75 @@
                             </tr>
                         </thead>
                         <tbody>
-            `;
-
-            dadosOrcamentoAtual.forEach(row => {
-                htmlTable += `
-                    <tr>
-                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[0]}</td>
-                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[1]}</td>
-                        <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[2]}</td>
-                    </tr>
                 `;
-            });
+                dadosOrcamentoAtual.forEach(row => {
+                    htmlTable += `
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[0]}</td>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[1]}</td>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${row[2]}</td>
+                        </tr>
+                    `;
+                });
+                htmlTable += `</tbody></table>`;
+            }
 
-            htmlTable += `
-                        </tbody>
-                    </table>
-            `;
+            // Tabela 2: Itens Adicionais
+            if (itensAdicionais.length > 0) {
+                htmlTable += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 0.5rem;">
+                        <h3 style="margin: 0; color: #1e3a8a;">Itens Adicionais Adicionados</h3>
+                        <button type="button" onclick="limparExtras()" style="padding: 0.4rem 0.6rem; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">Limpar Itens</button>
+                    </div>
+                    
+                    <table style="width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 1rem;">
+                        <thead>
+                            <tr style="background: #475569; color: white; text-align: left;">
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Item Manual</th>
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Qtd</th>
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1;">Valor</th>
+                                <th style="padding: 0.5rem; border: 1px solid #cbd5e1; text-align: center;">Remover</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                itensAdicionais.forEach((item, index) => {
+                    htmlTable += `
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${item.nome}</td>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${item.qtd}</td>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1;">${formatarMoeda(item.total)}</td>
+                            <td style="padding: 0.5rem; border: 1px solid #cbd5e1; text-align: center;">
+                                <button type="button" onclick="removerExtra(${index})" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 0.3rem 0.6rem; cursor: pointer;">X</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                htmlTable += `</tbody></table>`;
+            }
 
             if (observacoes) {
                 htmlTable += `<p style="margin: 0.5rem 0; font-size: 0.9rem; background: #fff; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1;"><strong>Obs:</strong> ${observacoes}</p>`;
             }
 
+            // Box de Totais e Desconto
+            htmlTable += `<div style="text-align: right; font-size: 1.1rem; margin: 1rem 0;">`;
+            if (descontoDados.ativo) {
+                htmlTable += `
+                    <p style="margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #64748b;">Subtotal: ${formatarMoeda(valorTotalBruto)}</p>
+                    <p style="margin: 0 0 0.5rem 0; font-size: 0.95rem; color: #16a34a;">
+                        Desconto Aplicado (${descontoDados.rotulo}): - ${formatarMoeda(descontoDados.valorCalculado)} 
+                        <button onclick="removerDesconto()" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; padding: 0;">(Remover)</button>
+                    </p>
+                `;
+            }
+            htmlTable += `<strong>TOTAL FINAL: ${formatarMoeda(valorTotalFinal)}</strong></div>`;
+
+            // Botoes
             htmlTable += `
-                    <div style="text-align: right; font-size: 1.1rem; margin: 1rem 0;">
-                        <strong>TOTAL${descontoAplicado ? ' (com 10% desc.)' : ''}: ${formatarMoeda(valorTotalFinal)}</strong>
-                    </div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button type="button" onclick="gerarPDF()" style="flex: 1; padding: 0.7rem; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">Baixar PDF</button>
-                        <button type="button" onclick="copiarParaWhatsApp()" style="flex: 1; padding: 0.7rem; background-color: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer;">Copiar p/ WhatsApp</button>
+                        <button type="button" onclick="gerarPDF()" style="flex: 1; padding: 0.7rem; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight:bold;">Baixar PDF</button>
+                        <button type="button" onclick="copiarParaWhatsApp()" style="flex: 1; padding: 0.7rem; background-color: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight:bold;">Copiar p/ WhatsApp</button>
                     </div>
                 </div>
             `;
@@ -187,66 +547,97 @@
             divRes.innerHTML = htmlTable;
         }
 
-        function aplicarDesconto() {
-            if (valorTotalFinal > 0 && !descontoAplicado) {
-                valorTotalFinal = valorTotalFinal * 0.90;
-                descontoAplicado = true;
-                dadosOrcamentoAtual.push(["Desconto Aplicado (10%)", "-", formatarMoeda(valorTotalFinal)]);
-                renderizarTabelaNaTela();
-            } else if (descontoAplicado) {
-                alert("O desconto de 10% já foi aplicado!");
-            } else {
-                alert("Preencha a quantidade primeiro!");
-            }
-        }
-
+        // --- WHATSAPP ---
         function copiarParaWhatsApp() {
             let nomeCliente = document.getElementById('nomeCliente').value.trim();
             let observacoes = document.getElementById('observacoes').value.trim();
             
             let texto = `*Orçamento Artana Multistore*\n_Departamento de Vendas_\n`;
-            if (nomeCliente) texto += `Cliente: ${nomeCliente}\n`;
-            texto += `\n*Produto:* ${tituloProdutoAtual}\n`;
+            if (nomeCliente) texto += `Cliente: *${nomeCliente}*\n`;
             
-            dadosOrcamentoAtual.forEach(row => {
-                texto += `- ${row[0]}: ${row[1]} (${row[2]})\n`;
-            });
+            if (dadosOrcamentoAtual.length > 0) {
+                texto += `\n*Produto Principal:* ${tituloProdutoAtual}\n`;
+                dadosOrcamentoAtual.forEach(row => {
+                    texto += `- ${row[0]}: ${row[1]} (${row[2]})\n`;
+                });
+            }
 
-            if (observacoes) texto += `\nObs: ${observacoes}\n`;
-            texto += `\n*TOTAL:* *${formatarMoeda(valorTotalFinal)}*`;
+            if (itensAdicionais.length > 0) {
+                texto += `\n*Itens Adicionais:*\n`;
+                itensAdicionais.forEach(item => {
+                    texto += `- ${item.nome}: ${item.qtd} un. (${formatarMoeda(item.total)})\n`;
+                });
+            }
+
+            if (observacoes) texto += `\nObs: _${observacoes}_\n`;
+            
+            texto += `\n*RESUMO:*`;
+            if (descontoDados.ativo) {
+                texto += `\nSubtotal: ${formatarMoeda(valorTotalBruto)}`;
+                texto += `\nDesconto (${descontoDados.rotulo}): - ${formatarMoeda(descontoDados.valorCalculado)}`;
+            }
+            texto += `\n*TOTAL FINAL: ${formatarMoeda(valorTotalFinal)}*`;
 
             navigator.clipboard.writeText(texto).then(() => {
-                alert("Orçamento copiado para a área de transferência! Cole direto no chat do WhatsApp.");
+                mostrarToast("Copiado com sucesso! Cole no WhatsApp.");
             });
         }
 
+        // --- PDF COM LOGO CALCULADA MATEMATICAMENTE ---
         function gerarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             let nomeCliente = document.getElementById('nomeCliente').value.trim();
             let observacoes = document.getElementById('observacoes').value.trim();
 
-            doc.setFontSize(16);
-            doc.setTextColor(37, 99, 235);
-            doc.text("Orçamento Artana Multistore", 14, 20);
+            let startYText = 20;
+
+            // Insere Logo se carregou, calculando o Aspect Ratio
+            if (logoBase64 && logoOriginalWidth > 0 && logoOriginalHeight > 0) {
+                let logoLarguraDesejada = 45; // mm no PDF
+                let proporcao = logoOriginalHeight / logoOriginalWidth;
+                let logoAlturaCalculada = logoLarguraDesejada * proporcao; // Mantém a imagem perfeita
+                
+                doc.addImage(logoBase64, 'PNG', 14, 10, logoLarguraDesejada, logoAlturaCalculada);
+                startYText = 10 + logoAlturaCalculada + 8; // Posiciona o texto logo abaixo da imagem
+            } else {
+                doc.setFontSize(16);
+                doc.setTextColor(37, 99, 235);
+                doc.text("Orçamento Artana Multistore", 14, startYText);
+                startYText += 8;
+            }
 
             doc.setFontSize(10);
             doc.setTextColor(100, 100, 100);
-            doc.text("Departamento de Vendas", 14, 26);
-            doc.text("Data: " + new Date().toLocaleDateString('pt-BR'), 14, 32);
+            doc.text("Departamento de Vendas", 14, startYText);
+            doc.text("Data: " + new Date().toLocaleDateString('pt-BR'), 14, startYText + 6);
 
-            let posY = 38;
+            let posY = startYText + 16;
             if (nomeCliente) {
                 doc.setFontSize(11);
                 doc.setTextColor(0, 0, 0);
                 doc.text(`Cliente: ${nomeCliente}`, 14, posY);
-                posY += 6;
+                posY += 8;
+            }
+
+            // Une as duas tabelas para gerar no PDF
+            let corpoPDF = [...dadosOrcamentoAtual];
+            
+            if (itensAdicionais.length > 0) {
+                corpoPDF.push([{ content: 'ITENS ADICIONAIS MANUAIS', colSpan: 3, styles: { fillColor: [71, 85, 105], textColor: [255,255,255], fontStyle: 'bold', halign: 'center' } }]);
+                itensAdicionais.forEach(item => {
+                    corpoPDF.push([item.nome, item.qtd + " un.", formatarMoeda(item.total)]);
+                });
+            }
+            
+            if (descontoDados.ativo) {
+                 corpoPDF.push([{ content: `Desconto Aplicado (${descontoDados.rotulo})`, colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', textColor: [22, 163, 74] } }, { content: "- " + formatarMoeda(descontoDados.valorCalculado), styles: { textColor: [22, 163, 74] } }]);
             }
 
             doc.autoTable({
                 startY: posY,
                 head: [['Item / Produto', 'Quantidade', 'Valor']],
-                body: dadosOrcamentoAtual,
+                body: corpoPDF,
                 theme: 'striped',
                 headStyles: { fillColor: [37, 99, 235] },
             });
@@ -260,11 +651,13 @@
                 finalY += 12;
             }
 
-            doc.setFontSize(11);
+            doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
             doc.text(`Valor Total Final: ${formatarMoeda(valorTotalFinal)}`, 14, finalY);
 
             doc.save("orcamento-artana.pdf");
+            mostrarToast("PDF baixado com sucesso!");
         }
     </script>
 </body>
